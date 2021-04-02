@@ -4,7 +4,6 @@
 
 -include("corgiplan_job.hrl").
 
-
 %% callbacks
 
 -callback inception_time() -> calendar:datetime1970().
@@ -74,7 +73,8 @@ start_link(JobServerName) ->
 
 init(JobServerName) ->
     {ok, Job} = corgiplan_job_state_manager:arm_job_for_execution(JobServerName),
-    TimeGapUntilExecution = get_time_until_next_execution(UpdatedJob#corgiplan_job.armed_execution_time),
+    TimeGapUntilExecution =
+        get_time_until_next_execution(Job#corgiplan_job.armed_execution_time),
     {ok, Job, TimeGapUntilExecution}.
 
 handle_call(stop, _From, State) ->
@@ -88,11 +88,15 @@ handle_cast(_Request, State) ->
 %     {reply, ok, State}.
 % probably need to create a reusable function and call it both here in and in handle_info
 
-handle_info(timeout, #corgiplan_job{job_server_name = JobServerName, armed_execution_time = ExecutionTimeUTC}) ->
+handle_info(timeout,
+            #corgiplan_job{job_server_name = JobServerName,
+                           armed_execution_time = ExecutionTimeUTC}) ->
     ok =
         JobServerName:execution_plan(), % let it crash and be re-tried on the supervisor level.
-    {ok, UpdatedJob} = corgiplan_job_state_manager:mark_success(JobServerName, ExecutionTimeUTC),
-    TimeGapUntilExecution = get_time_until_next_execution(UpdatedJob#corgiplan_job.armed_execution_time),
+    {ok, UpdatedJob} =
+        corgiplan_job_state_manager:mark_success(JobServerName, ExecutionTimeUTC),
+    TimeGapUntilExecution =
+        get_time_until_next_execution(UpdatedJob#corgiplan_job.armed_execution_time),
     %%handle between fail and ok. The will but us into back with different timeouts.
     {noreply, UpdatedJob, TimeGapUntilExecution};
 handle_info(_Info, State) ->
@@ -106,13 +110,13 @@ code_change(_OldVsn, State, _Extra) ->
 
 %% helper functions
 
--spec get_next_execution_time(Job :: #corgiplan_job{}) -> calendar:datetime1970().
-get_next_execution_time(#corgiplan_job{job_server_name = JobServerName,
-                                       last_correct_execution_utc = LastCorrectExecTime}) ->
-    ParsedCrontabSpec =
-        cron_ops:time_specs(
-            JobServerName:crontab_schedule()),
-    cron_ops:next(LastCorrectExecTime, ParsedCrontabSpec).
+% -spec get_next_execution_time(Job :: #corgiplan_job{}) -> calendar:datetime1970().
+% get_next_execution_time(#corgiplan_job{job_server_name = JobServerName,
+%                                        armed_execution_time = ArmedExecutionTime}) ->
+%     ParsedCrontabSpec =
+%         cron_ops:time_specs(
+%             JobServerName:crontab_schedule()),
+%     cron_ops:next(ArmedExecutionTime, ParsedCrontabSpec).
 
 -spec handle_registration_outcome({error, Reason :: term()} |
                                   {ok, undefined | pid()} |
@@ -131,7 +135,7 @@ handle_registration_outcome({error, {already_started, _Child}}) ->
 handle_registration_outcome({error, Reason}) ->
     {error, Reason}.
 
--spec get_time_until_next_execution(Job::#corgiplan_job{}) -> integer().
+-spec get_time_until_next_execution(NextExecutionTimeUTC :: calendar:datetime1970()) -> integer().
 get_time_until_next_execution(NextExecutionTimeUTC) ->
     NextGregorianSeconds = calendar:datetime_to_gregorian_seconds(NextExecutionTimeUTC),
     CurrentTime = calendar:local_time(),
@@ -139,4 +143,3 @@ get_time_until_next_execution(NextExecutionTimeUTC) ->
     CurrentTimeUTCSeconds = calendar:datetime_to_gregorian_seconds(CurrentTimeUTC),
     SecondsDiff = max(0, NextGregorianSeconds - CurrentTimeUTCSeconds),
     SecondsDiff * 1000.
-    
