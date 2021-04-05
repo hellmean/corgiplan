@@ -12,11 +12,36 @@
 -callback max_retries() -> non_neg_integer().
 -callback execution_plan() -> ok | fail.
 
--export([register/1, stop/1, start_link/1, run_parallel/1]).
+-export([register/1, stop/1, start_link/1, run_parallel/1, max_retries/1, inception_time/1, make_init_job_state/1, get_next_execution_time/1]).
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2,
          code_change/3]).
 
 %% API
+
+-spec get_next_execution_time(Job :: #corgiplan_job{}) -> calendar:datetime1970().
+get_next_execution_time(#corgiplan_job{job_server_name = JobServerName,
+                                       armed_execution_time = CurrentExecutionTimeUTC}) ->
+    ParsedCrontabSpec =
+        cron_ops:time_specs(
+            JobServerName:crontab_schedule()),
+    cron_ops:next(CurrentExecutionTimeUTC, ParsedCrontabSpec).
+
+-spec make_init_job_state(JobServerName :: term()) -> #corgiplan_job{}.
+make_init_job_state(JobServerName) ->
+    JobAtInception = #corgiplan_job{job_server_name = JobServerName,
+                         armed_execution_time = JobServerName:inception_time(),
+                         current_attempts_count = JobServerName:max_retries()},
+    NextExecutionTimeUTC = get_next_execution_time(JobAtInception),
+    JobAtInception#corgiplan_job{armed_execution_time = NextExecutionTimeUTC}.
+
+-spec max_retries(Job :: #corgiplan_job{}) -> non_neg_integer().
+max_retries(#corgiplan_job{job_server_name = JobServerName}) ->
+   JobServerName:max_retries(). 
+
+-spec inception_time(Job :: #corgiplan_job{}) -> calendar:datetime1970().
+inception_time(#corgiplan_job{job_server_name = JobServerName}) ->
+    JobServerName:inception_time().
+
 
 register(JobServerName) ->
     StartMFA = {corgiplan_job, start_link, [JobServerName]},
