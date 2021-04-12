@@ -2,7 +2,7 @@
 
 -include_lib("eunit/include/eunit.hrl").
 
--include("../src/corgiplan_job.hrl").
+-include_lib("corgiplan_lib/include/corgiplan_job.hrl").
 
 register_arm_execute_test_() ->
     {timeout,

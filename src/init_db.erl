@@ -1,6 +1,6 @@
 -module(init_db).
 
--include("corgiplan_job.hrl").
+-include_lib("corgiplan_lib/include/corgiplan_job.hrl").
 -include("corgiplan_execution_result.hrl").
 
 -export([init/0]).

@@ -2,7 +2,7 @@
 
 -include_lib("eunit/include/eunit.hrl").
 
--include("../src/corgiplan_job.hrl").
+-include_lib("corgiplan_lib/include/corgiplan_job.hrl").
 
 corgiplan_job_init_test() ->
     {ok, StateManager} = dummy_job_state_manager:start_link(),

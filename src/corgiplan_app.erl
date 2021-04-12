@@ -11,6 +11,7 @@
 
 start(_StartType, _StartArgs) ->
     ok = mnesia:start(),
+    net_adm:world(),
     corgiplan_sup:start_link().
 
 stop(_State) ->
