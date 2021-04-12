@@ -10,9 +10,10 @@
 -callback crontab_schedule() -> term().
 %if we return fail this stops execution without retries.
 -callback max_retries() -> non_neg_integer().
--callback execution_plan() -> ok | fail.
+-callback execution_plan(ExecutionTimeUTC :: calendar:datetime1970()) -> ok | fail.
 
--export([register/1, stop/1, start_link/1, run_parallel/1, max_retries/1, inception_time/1, make_init_job_state/1, get_next_execution_time/1]).
+-export([register/1, stop/1, start_link/1, run_parallel/1, max_retries/1,
+         inception_time/1, make_init_job_state/1, get_next_execution_time/1]).
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2,
          code_change/3]).
 
@@ -28,20 +29,20 @@ get_next_execution_time(#corgiplan_job{job_server_name = JobServerName,
 
 -spec make_init_job_state(JobServerName :: term()) -> #corgiplan_job{}.
 make_init_job_state(JobServerName) ->
-    JobAtInception = #corgiplan_job{job_server_name = JobServerName,
-                         armed_execution_time = JobServerName:inception_time(),
-                         current_attempts_count = JobServerName:max_retries()},
+    JobAtInception =
+        #corgiplan_job{job_server_name = JobServerName,
+                       armed_execution_time = JobServerName:inception_time(),
+                       current_attempts_count = JobServerName:max_retries()},
     NextExecutionTimeUTC = get_next_execution_time(JobAtInception),
     JobAtInception#corgiplan_job{armed_execution_time = NextExecutionTimeUTC}.
 
 -spec max_retries(Job :: #corgiplan_job{}) -> non_neg_integer().
 max_retries(#corgiplan_job{job_server_name = JobServerName}) ->
-   JobServerName:max_retries(). 
+    JobServerName:max_retries().
 
 -spec inception_time(Job :: #corgiplan_job{}) -> calendar:datetime1970().
 inception_time(#corgiplan_job{job_server_name = JobServerName}) ->
     JobServerName:inception_time().
-
 
 register(JobServerName) ->
     StartMFA = {corgiplan_job, start_link, [JobServerName]},
@@ -90,7 +91,7 @@ stop(Name) ->
 
 start_link(JobServerName) ->
     ModuleName = corgiplan_job,
-    Args = [JobServerName],
+    Args = JobServerName,
     Options = [],
     gen_server:start_link({global, JobServerName}, ModuleName, Args, Options).
 
@@ -117,7 +118,7 @@ handle_info(timeout,
             #corgiplan_job{job_server_name = JobServerName,
                            armed_execution_time = ExecutionTimeUTC}) ->
     ok =
-        JobServerName:execution_plan(), % let it crash and be re-tried on the supervisor level.
+        JobServerName:execution_plan(ExecutionTimeUTC), % let it crash and be re-tried on the supervisor level.
     {ok, UpdatedJob} =
         corgiplan_job_state_manager:mark_success(JobServerName, ExecutionTimeUTC),
     TimeGapUntilExecution =
@@ -160,7 +161,8 @@ handle_registration_outcome({error, {already_started, _Child}}) ->
 handle_registration_outcome({error, Reason}) ->
     {error, Reason}.
 
--spec get_time_until_next_execution(NextExecutionTimeUTC :: calendar:datetime1970()) -> integer().
+-spec get_time_until_next_execution(NextExecutionTimeUTC :: calendar:datetime1970()) ->
+                                       integer().
 get_time_until_next_execution(NextExecutionTimeUTC) ->
     NextGregorianSeconds = calendar:datetime_to_gregorian_seconds(NextExecutionTimeUTC),
     CurrentTime = calendar:local_time(),

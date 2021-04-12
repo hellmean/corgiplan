@@ -10,5 +10,5 @@ init() ->
     mnesia:start(),
     mnesia:create_table(corgiplan_job, [{attributes, record_info(fields, corgiplan_job)}]),
     mnesia:create_table(corgiplan_execution_result,
-                        [{attributes, record_info(fields, corgiplan_execution_result)}]),
-    mnesia:stop().
+                        [{attributes, record_info(fields, corgiplan_execution_result)},
+                         {type, bag}]).

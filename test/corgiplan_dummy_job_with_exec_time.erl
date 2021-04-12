@@ -1,4 +1,4 @@
--module(corgiplan_dummy_job).
+-module(corgiplan_dummy_job_with_exec_time).
 
 -behaviour(corigplan_job).
 
@@ -13,6 +13,6 @@ crontab_schedule() -> "*/1 * * * *".
 
 max_retries() -> 3.
 
-execution_plan(_ExecutionTime) ->
-    io:format("Hello~n"),
+execution_plan(ExecutionTime) ->
+    io:format("Hello! Execution time is ~w~n", [ExecutionTime]),
     ok.
