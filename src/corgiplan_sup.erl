@@ -31,9 +31,9 @@ init([]) ->
           period => 5},
     ChildSpecs =
         [#{id => corgiplan_job_state_manager,
-           start => {corgiplan_job_state_manager, start_link, []}},
+           start => {corgiplan_job_state_manager, start_link, [{global, corgiplan_job_state_manager}]}},
          #{id => corgiplan_job_state_reader,
-           start => {corgiplan_job_state_reader, start_link, []}}],
+           start => {corgiplan_job_state_reader, start_link, [{global, corgiplan_job_state_reader}]}}],
     {ok, {SupFlags, ChildSpecs}}.
 
 %% internal functions
